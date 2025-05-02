@@ -51,7 +51,7 @@ sudo apt-get install -y curl screen net-tools psmisc jq
 
 [ -d /root/.aztec/alpha-testnet ] && rm -r /root/.aztec/alpha-testnet
 
-AZTEC_PATH=$HOME/.aztec
+AZTEC_PATH=/home/codespace/.aztec
 BIN_PATH=$AZTEC_PATH/bin
 mkdir -p $BIN_PATH
 
@@ -65,21 +65,21 @@ curl -fsSL https://install.aztec.network | bash
 
 if ! command -v aztec >/dev/null 2>&1; then
     echo -e "${LIGHTBLUE}${BOLD}Aztec CLI not found in PATH. Adding it for current session...${RESET}"
-    export PATH="$PATH:$HOME/.aztec/bin"
+    export PATH="$PATH:/home/codespace/.aztec/bin"
     
-    if ! grep -Fxq 'export PATH=$PATH:$HOME/.aztec/bin' "$HOME/.bashrc"; then
-        echo 'export PATH=$PATH:$HOME/.aztec/bin' >> "$HOME/.bashrc"
+    if ! grep -Fxq 'export PATH=$PATH:/home/codespace/.aztec/bin' "/home/codespace/.bashrc"; then
+        echo 'export PATH=$PATH:/home/codespace/.aztec/bin' >> "/home/codespace/.bashrc"
         echo -e "${GREEN}${BOLD}Added Aztec to PATH in .bashrc${RESET}"
     fi
 fi
 
-if [ -f "$HOME/.bash_profile" ]; then
-    source "$HOME/.bash_profile"
-elif [ -f "$HOME/.bashrc" ]; then
-    source "$HOME/.bashrc"
+if [ -f "/home/codespace/.bash_profile" ]; then
+    source "/home/codespace/.bash_profile"
+elif [ -f "/home/codespace/.bashrc" ]; then
+    source "/home/codespace/.bashrc"
 fi
 
-export PATH="$PATH:$HOME/.aztec/bin"
+export PATH="$PATH:/home/codespace/.aztec/bin"
 
 if ! command -v aztec &> /dev/null; then
   echo -e "${RED}${BOLD}ERROR: Aztec installation failed. Please check the logs above.${RESET}"
@@ -123,9 +123,9 @@ else
 fi
 
 echo -e "\n${CYAN}${BOLD}---- STARTING AZTEC NODE ----${RESET}\n"
-cat > $HOME/start_aztec_node.sh << EOL
+cat > /home/codespace/start_aztec_node.sh << EOL
 #!/bin/bash
-export PATH=\$PATH:\$HOME/.aztec/bin
+export PATH=\$PATH:/home/codespace/.aztec/bin
 aztec start --node --archiver --sequencer \\
   --network alpha-testnet \\
   --port 8080 \\
@@ -136,7 +136,7 @@ aztec start --node --archiver --sequencer \\
   --p2p.p2pIp $IP
 EOL
 
-chmod +x $HOME/start_aztec_node.sh
-screen -dmS aztec $HOME/start_aztec_node.sh
+chmod +x /home/codespace/start_aztec_node.sh
+screen -dmS aztec /home/codespace/start_aztec_node.sh
 
 echo -e "${GREEN}${BOLD}Aztec node started successfully in a screen session.${RESET}\n"
