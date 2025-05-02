@@ -42,7 +42,7 @@ command -v curl >/dev/null 2>&1 || apt-get update && apt-get install -y curl; co
 - Execute either of the following commands to run your Aztec node
 
 ```
-[ -f "aztec.sh" ] && rm aztec.sh; curl -sSL -o aztec.sh https://raw.githubusercontent.com/zunxbt/aztec-sequencer-node/main/aztec.sh && chmod +x aztec.sh && ./aztec.sh
+[ -f "aztec.sh" ] && rm aztec.sh; curl -sSL -o aztec.sh https://raw.githubusercontent.com/VYPIR99/aztec-sequencer-node/main/aztec.sh && chmod +x aztec.sh && ./aztec.sh
 ```
 or
 ```
