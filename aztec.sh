@@ -11,45 +11,24 @@ RESET='\033[0m'
 curl -s https://raw.githubusercontent.com/zunxbt/logo/main/logo.sh | bash
 sleep 3
 
-echo -e "\n${CYAN}${BOLD}---- CHECKING DOCKER INSTALLATION ----${RESET}\n"
+echo -e "\n${CYAN}${BOLD}---- CHECKING DOCKER AVAILABILITY ----${RESET}\n"
 if ! command -v docker &> /dev/null; then
-  echo -e "${LIGHTBLUE}${BOLD}Docker not found. Installing Docker...${RESET}"
-  curl -fsSL https://get.docker.com -o get-docker.sh
-  sh get-docker.sh
-  sudo usermod -aG docker $USER
-  rm get-docker.sh
-  echo -e "${GREEN}${BOLD}Docker installed successfully!${RESET}"
+  echo -e "${RED}${BOLD}Docker is not available in this Codespace. Make sure 'features' includes Docker in devcontainer.json.${RESET}"
+  exit 1
 fi
 
-echo -e "${LIGHTBLUE}${BOLD}Setting up Docker to run without sudo for this session...${RESET}"
-if ! getent group docker > /dev/null; then
-  sudo groupadd docker
+if [ ! -S /var/run/docker.sock ]; then
+  echo -e "${RED}${BOLD}Docker socket not found. Docker may not be properly configured in Codespaces.${RESET}"
+  exit 1
 fi
 
-sudo usermod -aG docker $USER
-
-if [ -S /var/run/docker.sock ]; then
-  sudo chmod 666 /var/run/docker.sock
-  echo -e "${GREEN}${BOLD}Docker socket permissions updated.${RESET}"
-else
-  echo -e "${RED}${BOLD}Docker socket not found. Docker daemon might not be running.${RESET}"
-  echo -e "${LIGHTBLUE}${BOLD}Starting Docker daemon...${RESET}"
-  sudo systemctl start docker
-  sudo chmod 666 /var/run/docker.sock
-fi
-
-if docker info &>/dev/null; then
-  echo -e "${GREEN}${BOLD}Docker is now working without sudo.${RESET}"
-else
-  echo -e "${RED}${BOLD}Failed to configure Docker to run without sudo. Using sudo for Docker commands.${RESET}"
-  DOCKER_CMD="sudo docker"
-fi
+echo -e "${GREEN}${BOLD}Docker is available and ready to use.${RESET}"
 
 echo -e "\n${CYAN}${BOLD}---- INSTALLING DEPENDENCIES ----${RESET}\n"
 sudo apt-get update
 sudo apt-get install -y curl screen net-tools psmisc jq
 
-[ -d /root/.aztec/alpha-testnet ] && rm -r /root/.aztec/alpha-testnet
+[ -d /home/codespace/.aztec/alpha-testnet ] && rm -r /home/codespace/.aztec/alpha-testnet
 
 AZTEC_PATH=/home/codespace/.aztec
 BIN_PATH=$AZTEC_PATH/bin
@@ -57,25 +36,19 @@ mkdir -p $BIN_PATH
 
 echo -e "\n${CYAN}${BOLD}---- INSTALLING AZTEC TOOLKIT ----${RESET}\n"
 
-if [ -n "$DOCKER_CMD" ]; then
-  export DOCKER_CMD="$DOCKER_CMD"
-fi
-
 curl -fsSL https://install.aztec.network | bash
 
 if ! command -v aztec >/dev/null 2>&1; then
     echo -e "${LIGHTBLUE}${BOLD}Aztec CLI not found in PATH. Adding it for current session...${RESET}"
     export PATH="$PATH:/home/codespace/.aztec/bin"
-    
+
     if ! grep -Fxq 'export PATH=$PATH:/home/codespace/.aztec/bin' "/home/codespace/.bashrc"; then
         echo 'export PATH=$PATH:/home/codespace/.aztec/bin' >> "/home/codespace/.bashrc"
         echo -e "${GREEN}${BOLD}Added Aztec to PATH in .bashrc${RESET}"
     fi
 fi
 
-if [ -f "/home/codespace/.bash_profile" ]; then
-    source "/home/codespace/.bash_profile"
-elif [ -f "/home/codespace/.bashrc" ]; then
+if [ -f "/home/codespace/.bashrc" ]; then
     source "/home/codespace/.bashrc"
 fi
 
@@ -90,22 +63,14 @@ echo -e "\n${CYAN}${BOLD}---- UPDATING AZTEC TO ALPHA-TESTNET ----${RESET}\n"
 aztec-up alpha-testnet
 
 echo -e "\n${CYAN}${BOLD}---- CONFIGURING NODE ----${RESET}\n"
-IP=$(curl -s https://api.ipify.org)
-if [ -z "$IP" ]; then
-    IP=$(curl -s http://checkip.amazonaws.com)
-fi
-if [ -z "$IP" ]; then
-    IP=$(curl -s https://ifconfig.me)
-fi
-if [ -z "$IP" ]; then
-    echo -e "${LIGHTBLUE}${BOLD}Could not determine IP address automatically.${RESET}"
-    read -p "Please enter your VPS/WSL IP address: " IP
-fi
 
-echo -e "${LIGHTBLUE}${BOLD}Visit ${PURPLE}https://dashboard.alchemy.com/apps${RESET}${LIGHTBLUE}${BOLD} or ${PURPLE}https://developer.metamask.io/register${RESET}${LIGHTBLUE}${BOLD} to create an account and get a Sepolia RPC URL.${RESET}"
+# IP not used in Codespace; using loopback
+IP="127.0.0.1"
+
+echo -e "${LIGHTBLUE}${BOLD}Visit ${PURPLE}https://dashboard.alchemy.com/apps${RESET}${LIGHTBLUE}${BOLD} or ${PURPLE}https://developer.metamask.io/register${RESET}${LIGHTBLUE}${BOLD} to get a Sepolia RPC URL.${RESET}"
 read -p "Enter Your Sepolia Ethereum RPC URL: " L1_RPC_URL
 
-echo -e "\n${LIGHTBLUE}${BOLD}Visit ${PURPLE}https://chainstack.com/global-nodes${RESET}${LIGHTBLUE}${BOLD} to create an account and get beacon RPC URL.${RESET}"
+echo -e "\n${LIGHTBLUE}${BOLD}Visit ${PURPLE}https://chainstack.com/global-nodes${RESET}${LIGHTBLUE}${BOLD} to get a beacon RPC URL.${RESET}"
 read -p "Enter Your Sepolia Ethereum BEACON URL: " L1_CONSENSUS_URL
 
 echo -e "\n${LIGHTBLUE}${BOLD}Please create a new EVM wallet, fund it with Sepolia Faucet and then provide the private key.${RESET}"
@@ -115,7 +80,7 @@ read -p "Enter the wallet address associated with the private key you just provi
 echo -e "\n${CYAN}${BOLD}---- CHECKING PORT AVAILABILITY ----${RESET}\n"
 if netstat -tuln | grep -q ":8080 "; then
     echo -e "${LIGHTBLUE}${BOLD}Port 8080 is in use. Attempting to free it...${RESET}"
-    sudo fuser -k 8080/tcp
+    fuser -k 8080/tcp
     sleep 2
     echo -e "${GREEN}${BOLD}Port 8080 has been freed successfully.${RESET}"
 else
@@ -137,6 +102,12 @@ aztec start --node --archiver --sequencer \\
 EOL
 
 chmod +x /home/codespace/start_aztec_node.sh
-screen -dmS aztec /home/codespace/start_aztec_node.sh
 
-echo -e "${GREEN}${BOLD}Aztec node started successfully in a screen session.${RESET}\n"
+# Use screen if available; fallback to background
+if command -v screen &> /dev/null; then
+    screen -dmS aztec /home/codespace/start_aztec_node.sh
+else
+    nohup /home/codespace/start_aztec_node.sh > /home/codespace/aztec.log 2>&1 &
+fi
+
+echo -e "${GREEN}${BOLD}Aztec node started successfully in background.${RESET}\n"
